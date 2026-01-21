@@ -22,6 +22,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('products', ProductController::class);
     Route::apiResource('suppliers', SupplierController::class);
     Route::apiResource('orders', OrderController::class);
+    Route::apiResource('users', \App\Http\Controllers\Api\UserController::class)->only(['index', 'destroy']);
     
     Route::get('/inventory-logs', [InventoryLogController::class, 'index']);
 });
