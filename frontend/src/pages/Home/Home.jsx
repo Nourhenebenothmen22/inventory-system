@@ -55,14 +55,17 @@ const Home = () => {
       .slice(-7); // Last 7 unique dates
   }, [orders]);
 
-  // Prepare data for Stock by Category
+  // Prepare data for Stock by Category (Distribution par Catégorie)
   const categoryData = useMemo(() => {
     const cats = {};
     products.forEach(p => {
-      const catName = p.category?.name || 'Inconnu';
-      cats[catName] = (cats[catName] || 0) + 1;
+      const catName = p.category?.name || 'Sans Catégorie';
+      // On somme les quantités pour avoir une distribution réelle du stock
+      cats[catName] = (cats[catName] || 0) + p.quantity;
     });
-    return Object.entries(cats).map(([name, value]) => ({ name, value }));
+    return Object.entries(cats)
+      .map(([name, value]) => ({ name, value }))
+      .filter(item => item.value > 0); // Ne montrer que les catégories avec du stock
   }, [products]);
 
   // Prepare data for Order Status distribution
@@ -91,6 +94,18 @@ const Home = () => {
       .map(([name, quantity]) => ({ name, quantity }))
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 5); // Pick top 5
+  }, [orders]);
+
+  // Prepare data for User Category Dependence (Volume d'achats par catégorie)
+  const userOrderCategoryData = useMemo(() => {
+    const cats = {};
+    orders.forEach(o => {
+      const catName = o.product?.category?.name || 'Sans Catégorie';
+      cats[catName] = (cats[catName] || 0) + o.quantity;
+    });
+    return Object.entries(cats)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
   }, [orders]);
 
   const COLORS = ['#6366f1', '#a855f7', '#f43f5e', '#10b981', '#f59e0b'];
@@ -152,32 +167,34 @@ const Home = () => {
       </div>
 
       <div className="charts-grid mt-8" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
-        <div className="chart-card glass-card p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3>{isAdmin ? 'Tendance des Ventes' : 'Tendance de mes Commandes'}</h3>
-            <span className="text-muted text-xs">Dates actives</span>
+        {isAdmin && (
+          <div className="chart-card glass-card p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3>Tendance des Ventes</h3>
+              <span className="text-muted text-xs">Dates actives</span>
+            </div>
+            <div style={{ width: '100%', height: 300 }}>
+              <ResponsiveContainer>
+                <AreaChart data={salesData}>
+                  <defs>
+                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px' }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                  <Area type="monotone" dataKey="total" stroke="#6366f1" fillOpacity={1} fill="url(#colorTotal)" strokeWidth={3} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div style={{ width: '100%', height: 300 }}>
-            <ResponsiveContainer>
-              <AreaChart data={salesData}>
-                <defs>
-                  <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={isAdmin ? "#6366f1" : "#10b981"} stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor={isAdmin ? "#6366f1" : "#10b981"} stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px' }}
-                  itemStyle={{ color: '#fff' }}
-                />
-                <Area type="monotone" dataKey="total" stroke={isAdmin ? "#6366f1" : "#10b981"} fillOpacity={1} fill="url(#colorTotal)" strokeWidth={3} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        )}
 
         <div className="chart-card glass-card p-6">
           <div className="flex justify-between items-center mb-6">
