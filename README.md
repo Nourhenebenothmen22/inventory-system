@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="frontend/src/assets/Logo.png" alt="InvenTrack Logo" width="200" />
+  <img src="./frontend//src/assets/Logo.png" alt="InvenTrack Logo" width="200" />
   <h1>📦 InvenTrack - Système de Gestion d'Inventaire Premium</h1>
   <p>Une solution full-stack complète pour la gestion de stocks, commandes et analytiques.</p>
 </div>
