@@ -1,117 +1,124 @@
-# 📦 Inventory Management System - Premium Dashboard
-
-Système de gestion d'inventaire full-stack moderne, performant et sécurisé, conçu avec **Laravel** pour le backend et **React** pour le frontend. Il utilise un design "premium" inspiré du mode sombre avec des effets de flou (Glassmorphism).
-
----
-
-## 🚀 Technologies Utilisées
-
-### 🖥️ Frontend (Client)
-
-- **React.js (Vite)** : Framework principal pour une UI réactive.
-- **Zustand** : Gestion d'état globale (Store) légère et performante.
-- **Axios** : Appels API avec intercepteurs pour la gestion automatique des tokens JWT.
-- **Recharts** : Visualisations de données dynamiques (Area, Bar, Pie Charts).
-- **Lucide React** : Collection d'icônes modernes.
-- **React Hot Toast** : Système de notifications élégant.
-- **CSS3 (Vanilla)** : Design system sur mesure avec variables CSS et animations.
-
-### ⚙️ Backend (Serveur & API)
-
-- **Laravel** : Framework PHP robuste pour l'API REST.
-- **Sanctum** : Authentification stateless basée sur les tokens.
-- **Spatie Laravel Permission** : Gestion fine des rôles (RBAC) et permissions.
-- **SQLite** : Base de données légère et rapide (facile à migrer).
+<div align="center">
+  <img src="frontend/src/assets/Logo.png" alt="InvenTrack Logo" width="200" />
+  <h1>📦 InvenTrack - Système de Gestion d'Inventaire Premium</h1>
+  <p>Une solution full-stack complète pour la gestion de stocks, commandes et analytiques.</p>
+</div>
 
 ---
 
-## 📊 Architecture de la Base de Données
+## 🚀 Présentation
 
-Le système repose sur une structure relationnelle optimisée :
-
-- **Users** : Gère l'authentification et les rôles (`admin` vs `user`).
-- **Categories** : Classification des produits. (_Relation 1:N avec Products_)
-- **Suppliers** : Registre des fournisseurs. (_Relation 1:N avec Products_)
-- **Products** : Cœur de l'inventaire (Nom, Prix, Quantité, Image).
-- **Orders** : Historique des transactions.
-  - `user_id` -> Qui a commandé.
-  - `product_id` -> Quel produit.
-  - `status` -> `pending`, `completed`, `canceled`.
-- **InventoryLogs** : Journal d'audit automatique traçant chaque mouvement de stock (Vente, Réapprovisionnement).
+**InvenTrack** est une application moderne conçue pour simplifier la gestion des stocks. Elle offre une interface élégante en mode sombre (Glassmorphism) et une architecture robuste basée sur Laravel et React.
 
 ---
 
-## 🛠️ Installation & Configuration
+## 📊 Diagramme de Classe (Architecture des Données)
 
-### 1. Configuration du Backend
+```mermaid
+classDiagram
+    class User {
+        +int id
+        +string name
+        +string email
+        +string role
+    }
+    class Category {
+        +int id
+        +string name
+        +string description
+    }
+    class Supplier {
+        +int id
+        +string name
+        +string email
+        +string phone
+        +string address
+    }
+    class Product {
+        +int id
+        +string name
+        +float price
+        +int quantity
+        +string image
+        +int category_id
+        +int supplier_id
+    }
+    class Order {
+        +int id
+        +int user_id
+        +int product_id
+        +int quantity
+        +float total_price
+        +string status
+        +datetime created_at
+    }
+    class InventoryLog {
+        +int id
+        +int product_id
+        +string change_type
+        +int quantity
+        +string description
+        +datetime created_at
+    }
 
-```bash
-# Entrer dans le dossier backend
-cd backend
-
-# Installer les dépendances PHP
-composer install
-
-# Configurer l'environnement (Vérifier DB_CONNECTION=sqlite)
-cp .env.example .env
-
-# Générer la clé d'application
-php artisan key:generate
-
-# Créer la base de données SQLite
-touch database/database.sqlite
-
-# Lancer les migrations et les seeders (Données de test + Admin)
-php artisan migrate --seed
-```
-
-### 2. Configuration du Frontend
-
-```bash
-# Entrer dans le dossier frontend
-cd frontend
-
-# Installer les dépendances JS
-npm install
-
-# Lancer le serveur de développement
-npm run dev
+    User "1" -- "*" Order : passe
+    Category "1" -- "*" Product : classifie
+    Supplier "1" -- "*" Product : fournit
+    Product "1" -- "*" Order : est commandé
+    Product "1" -- "*" InventoryLog : est tracé
 ```
 
 ---
 
-## 🔒 Sécurité & Rôles (RBAC)
+## 📡 Routes & Fonctionnalités
 
-| Rôle      | Accès & Permissions                                                                                                                          |
-| :-------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Admin** | Accès TOTAL : Dashboard complet, gestion des produits, catégories, fournisseurs, utilisateurs et validation des commandes.                   |
-| **User**  | Accès Restreint : Dashboard personnel, liste des produits (lecture seule), passer des commandes et annuler ses propres commandes en attente. |
+### 🖥️ Frontend (React)
+
+| Route         | Description                                 | Accès             |
+| :------------ | :------------------------------------------ | :---------------- |
+| `/`           | Tableau de bord (Statistiques & Graphiques) | Tous              |
+| `/login`      | Connexion à l'application                   | Public            |
+| `/register`   | Création de compte                          | Public            |
+| `/products`   | Liste et recherche de produits              | Tous (CRUD Admin) |
+| `/categories` | Gestion des catégories                      | Admin uniquement  |
+| `/suppliers`  | Gestion des fournisseurs                    | Admin uniquement  |
+| `/orders`     | Historique et passage de commandes          | Tous              |
+| `/logs`       | Journal d'audit des stocks                  | Tous              |
+| `/users`      | Gestion des utilisateurs                    | Admin uniquement  |
+
+### ⚙️ Backend (API Laravel)
+
+**Authentification (Sanctum)**
+
+- `POST /api/login` : Connexion
+- `POST /api/register` : Inscription
+- `POST /api/logout` : Déconnexion
+- `GET /api/me` : Infos utilisateur connecté
+
+**Gestion des Ressources**
+
+- `apiResource('products')` : CRUD complet produits (Image upload supporté)
+- `apiResource('categories')` : CRUD catégories (Admin)
+- `apiResource('suppliers')` : CRUD fournisseurs (Admin)
+- `apiResource('orders')` : Index, Store et Update (Validation de commande)
+- `GET /api/inventory-logs` : Liste des mouvements de stock
+- `GET /api/users` : Liste des membres (Admin)
 
 ---
 
-## 📡 Endpoints API Principaux
+## 🛠️ Installation
 
-- `POST /api/login` - Authentification
-- `GET /api/products` - Liste des produits (Filtrable)
-- `POST /api/orders` - Création de commande (Déclenche le cycle de vie du stock)
-- `PUT /api/orders/{id}` - Mise à jour du statut (Admin uniquement pour validation)
-- `GET /api/stats` - Données pour les graphiques du Dashboard
+### Backend (Laravel)
 
----
+1. `composer install`
+2. `php artisan migrate --seed`
+3. `php artisan serve`
 
-## 💡 Commandes Utiles (Laravel)
+### Frontend (React)
 
-- **Créer un Controller** : `php artisan make:controller Api/NomController --api`
-- **Créer un Modèle + Migration** : `php artisan make:model Nom -m`
-- **Rafraîchir la DB** : `php artisan migrate:fresh --seed`
-- **Créer un Seeder** : `php artisan make:seeder NomSeeder`
+1. `npm install`
+2. `npm run dev`
 
 ---
 
-## 🎨 Design System
-
-Le projet utilise un système de variables CSS (`:root`) défini dans `index.css` permettant de modifier les couleurs primaires, les arrondis (`border-radius`) et les flous de background en un seul endroit.
-
----
-
-_Développé avec ❤️ par Antigravity._
+_Ce projet est maintenu sous licence MIT._
