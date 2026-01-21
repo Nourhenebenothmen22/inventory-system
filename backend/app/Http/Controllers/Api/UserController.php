@@ -2,47 +2,25 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class UserController
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        // On retourne tous les utilisateurs avec leurs rôles
+        return response()->json(User::with('roles')->get());
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function destroy(User $user)
     {
-        //
-    }
+        // Empêcher de se supprimer soi-même
+        if (auth()->id() === $user->id) {
+            return response()->json(['message' => 'Vous ne pouvez pas supprimer votre propre compte.'], 403);
+        }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $user->delete();
+        return response()->json(['message' => 'Utilisateur supprimé avec succès.']);
     }
 }

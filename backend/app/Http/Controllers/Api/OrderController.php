@@ -13,7 +13,15 @@ class OrderController
 {
     public function index()
     {
-        return Order::with(['user', 'product'])->get();
+        $user = auth()->user();
+        
+        $query = Order::with(['user', 'product']);
+
+        if (!$user->hasRole('admin')) {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query->latest()->get();
     }
 
     public function store(Request $request)
@@ -23,40 +31,23 @@ class OrderController
             'quantity' => 'required|integer|min:1',
         ]);
 
-        return DB::transaction(function () use ($request) {
-            $product = Product::findOrFail($request->product_id);
+        $product = Product::findOrFail($request->product_id);
 
-            if ($product->quantity < $request->quantity) {
-                return response()->json(['message' => 'Stock insuffisant'], 400);
-            }
+        if ($product->quantity < $request->quantity) {
+            return response()->json(['message' => 'Stock insuffisant'], 400);
+        }
 
-            // Create Order
-            $order = Order::create([
-                'user_id' => auth()->id(),
-                'product_id' => $product->id,
-                'unit_price' => $product->price,
-                'quantity' => $request->quantity,
-                'total_price' => $product->price * $request->quantity,
-                'status' => 'completed',
-            ]);
+        // Create Order as PENDING first
+        $order = Order::create([
+            'user_id' => auth()->id(),
+            'product_id' => $product->id,
+            'unit_price' => $product->price,
+            'quantity' => $request->quantity,
+            'total_price' => $product->price * $request->quantity,
+            'status' => 'pending',
+        ]);
 
-            // Deduct Stock
-            $product->decrement('quantity', $request->quantity);
-
-            // Log Inventory
-            InventoryLog::create([
-                'product_id' => $product->id,
-                'quantity_changed' => -$request->quantity,
-                'type' => 'sale',
-            ]);
-
-            return response()->json($order->load(['user', 'product']), 201);
-        });
-    }
-
-    public function show(Order $order)
-    {
-        return $order->load(['user', 'product']);
+        return response()->json($order->load(['user', 'product']), 201);
     }
 
     public function update(Request $request, Order $order)
@@ -65,8 +56,48 @@ class OrderController
             'status' => 'required|in:pending,completed,canceled',
         ]);
 
-        $order->update(['status' => $request->status]);
+        $user = auth()->user();
 
-        return response()->json($order);
+        // Security Check: 
+        // 1. Admin can do everything
+        // 2. User can only change their OWN order status to 'canceled' and ONLY if it's currently 'pending'
+        if (!$user->hasRole('admin')) {
+            if ($order->user_id !== $user->id) {
+                return response()->json(['message' => 'Accès refusé'], 403);
+            }
+            if ($request->status !== 'canceled') {
+                return response()->json(['message' => 'Vous ne pouvez qu\'annuler votre commande'], 403);
+            }
+            if ($order->status !== 'pending') {
+                return response()->json(['message' => 'Cette commande ne peut plus être annulée'], 400);
+            }
+        }
+
+        // Only handle stock if transitioning TO completed FROM pending (Admin Action)
+        if ($request->status === 'completed' && $order->status === 'pending') {
+            return DB::transaction(function () use ($request, $order) {
+                $product = $order->product;
+                
+                if ($product->quantity < $order->quantity) {
+                    return response()->json(['message' => 'Stock insuffisant pour valider cette commande'], 400);
+                }
+
+                // Deduct Stock
+                $product->decrement('quantity', $order->quantity);
+
+                // Log Inventory
+                InventoryLog::create([
+                    'product_id' => $product->id,
+                    'quantity_changed' => -$order->quantity,
+                    'type' => 'sale',
+                ]);
+
+                $order->update(['status' => 'completed']);
+                return response()->json($order->load(['user', 'product']));
+            });
+        }
+
+        $order->update(['status' => $request->status]);
+        return response()->json($order->load(['user', 'product']));
     }
 }
